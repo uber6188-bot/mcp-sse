@@ -25,6 +25,8 @@ app.get("/sse", (req, res) => {
   });
 });
 
-app.listen(3000, () => {
-  console.log("MCP SSE server running on http://localhost:3000/sse");
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+  console.log(`MCP SSE server running on http://localhost:${port}/sse`);
 });
