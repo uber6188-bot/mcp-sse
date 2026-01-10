@@ -1,67 +1,38 @@
-const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
-const { SSEServerTransport } = require("@modelcontextprotocol/sdk/server/sse.js");
-const express = require("express");
+const express = require('express');
+const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-const server = new Server(
-  {
-    name: "example-server",
-    version: "0.1.0",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
+// Create MCP server
+const mcpServer = new Server(
+  { name: 'example-server', version: '0.1.0' },
+  { capabilities: { tools: {} } }
 );
 
-server.setRequestHandler("tools/list", async () => {
-  return {
-    tools: [
-      {
-        name: "echo",
-        description: "Echoes back the input",
-        inputSchema: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-              description: "Message to echo",
-            },
-          },
-          required: ["message"],
-        },
-      },
-    ],
-  };
-});
+// Handle tools/list
+mcpServer.setRequestHandler('tools/list', async () => ({
+  tools: [{
+    name: 'echo',
+    description: 'Echoes back the input',
+    inputSchema: {
+      type: 'object',
+      properties: { message: { type: 'string' } },
+      required: ['message']
+    }
+  }]
+}));
 
-server.setRequestHandler("tools/call", async (request) => {
-  if (request.params.name === "echo") {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Echo: ${request.params.arguments.message}`,
-        },
-      ],
-    };
-  }
-  throw new Error("Unknown tool");
-});
+// Handle tools/call
+mcpServer.setRequestHandler('tools/call', async (request) => ({
+  content: [{ type: 'text', text: `Echo: ${request.params.arguments.message}` }]
+}));
 
-const transport = new SSEServerTransport("/messages", server);
+// Create transport
+const transport = new SSEServerTransport('/messages', mcpServer);
 
-app.get("/sse", async (req, res) => {
-  await transport.handleSseConnection(req, res);
-});
+app.get('/sse', (req, res) => transport.connect(req, res));
+app.post('/messages', (req, res) => transport.handlePostMessage(req, res));
 
-app.post("/messages", async (req, res) => {
-  await transport.handlePostMessage(req, res);
-});
-
-app.listen(PORT, () => {
-  console.log(`MCP SSE server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
